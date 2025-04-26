@@ -1,0 +1,71 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f0f0;
+    font-family: sans-serif;
+}
+
+.keypad-container {
+    background-color: #ccc;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.display {
+    background-color: #e0e0e0;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    padding: 10px;
+    min-height: 30px; /* Ensure it has some height even when empty */
+    margin-bottom: 15px;
+    text-align: right;
+    font-size: 1.5em;
+    overflow-wrap: break-word; /* Wrap long numbers */
+}
+
+.keypad {
+    display: grid;
+    /* Create 3 columns of equal fractional width */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px; /* Spacing between buttons */
+}
+
+.keypad button {
+    padding: 15px;
+    font-size: 1.2em;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.keypad button:hover {
+    background-color: #eee;
+}
+
+.keypad button:active {
+    background-color: #ddd;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.keypad button.control {
+    background-color: #ffcc80; /* Orange-ish for control buttons */
+}
+
+.keypad button.control:hover {
+    background-color: #ffb74d;
+}
+
+.keypad button.control:active {
+    background-color: #ffa726;
+}
