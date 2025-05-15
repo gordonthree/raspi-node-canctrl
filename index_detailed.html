@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAN Bus Monitor - Detailed Counts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        header {
+            background-color: #0056b3;
+            color: white;
+            padding: 15px 0;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+        .container {
+            background-color: #fff;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 700px;
+        }
+        #message-table-container {
+            margin-top: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            background-color: #fff;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .no-messages {
+            text-align: center;
+            color: #777;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CAN Bus Live Monitor - Detailed Message Counts</h1>
+    </header>
+
+    <div class="container">
+        <div id="message-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Message ID (Hex)</th>
+                        <th>Times Received</th>
+                    </tr>
+                </thead>
+                <tbody id="message-tbody">
+                    </tbody>
+            </table>
+            <div id="no-messages-placeholder" class="no-messages" style="display: none;">No messages received yet.</div>
+        </div>
+    </div>
+
+    <p class="status" id="connection-status">Connecting to server...</p>
+
+    <script>
+        const messageTableBody = document.getElementById('message-tbody');
+        const connectionStatus = document.getElementById('connection-status');
+        const noMessagesPlaceholder = document.getElementById('no-messages-placeholder');
+        let socket;
+
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established.');
+                connectionStatus.textContent = 'Connected to server.';
+                connectionStatus.style.color = 'green';
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'detailedStats') {
+                        updateMessageTable(data.stats);
+                    }
+                } catch (error) {
+                    console.error('Error processing message from server:', error);
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.log('WebSocket connection closed.', event);
+                connectionStatus.textContent = 'Disconnected. Attempting to reconnect...';
+                connectionStatus.style.color = 'red';
+                setTimeout(connectWebSocket, 3000); // Try to reconnect every 3 seconds
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                connectionStatus.textContent = 'Connection error.';
+                connectionStatus.style.color = 'red';
+            };
+        }
+
+        function updateMessageTable(stats) {
+            messageTableBody.innerHTML = ''; // Clear previous table rows
+
+            const sortedIds = Object.keys(stats).sort((a, b) => {
+                // Sort by ID numerically (hex to int)
+                return parseInt(a, 16) - parseInt(b, 16);
+            });
+
+            if (sortedIds.length === 0) {
+                noMessagesPlaceholder.style.display = 'block';
+                return;
+            }
+            noMessagesPlaceholder.style.display = 'none';
+
+            sortedIds.forEach(id => {
+                const count = stats[id];
+                const row = messageTableBody.insertRow();
+                const cellId = row.insertCell();
+                const cellCount = row.insertCell();
+
+                cellId.textContent = id;
+                cellCount.textContent = count;
+            });
+        }
+
+        // Initial connection attempt
+        connectWebSocket();
+        // Initialize table display in case no messages come immediately
+        updateMessageTable({});
+    </script>
+</body>
+</html>

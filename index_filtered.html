@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAN Bus Monitor - Filtered Log</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        header {
+            background-color: #0056b3;
+            color: white;
+            padding: 15px 0;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+        .container {
+            background-color: #fff;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px; /* Increased max-width for more content */
+        }
+        .container h2 {
+            color: #004085;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            font-size: 0.9em; /* Slightly smaller font for more data */
+        }
+        th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            background-color: #fff;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .no-messages {
+            text-align: center;
+            color: #777;
+            padding: 15px;
+        }
+        #filtered-log-container {
+            margin-top: 30px; /* Space between the two sections */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CAN Bus Live Monitor</h1>
+    </header>
+
+    <div class="container" id="general-stats-container">
+        <h2>Unique Message ID Counts</h2>
+        <div id="message-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Message ID (Hex)</th>
+                        <th>Times Received</th>
+                    </tr>
+                </thead>
+                <tbody id="message-tbody">
+                    </tbody>
+            </table>
+            <div id="no-messages-placeholder" class="no-messages" style="display: block;">No messages received yet.</div>
+        </div>
+    </div>
+
+    <div class="container" id="filtered-log-container">
+        <h2>Filtered Message Log (IDs: 0x700 - 0x77F)</h2>
+        <div id="filtered-messages-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID (Hex)</th>
+                        <th>Node ID (Hex)</th>
+                        <th>Data (Hex)</th>
+                    </tr>
+                </thead>
+                <tbody id="filtered-messages-tbody">
+                    </tbody>
+            </table>
+            <div id="no-filtered-messages" class="no-messages" style="display: block;">No messages in the 0x700-0x77F range received yet.</div>
+        </div>
+    </div>
+
+    <p class="status" id="connection-status">Connecting to server...</p>
+
+    <script>
+        const messageTableBody = document.getElementById('message-tbody');
+        const noMessagesPlaceholder = document.getElementById('no-messages-placeholder');
+
+        const filteredMessagesTableBody = document.getElementById('filtered-messages-tbody');
+        const noFilteredMessagesPlaceholder = document.getElementById('no-filtered-messages');
+
+        const connectionStatus = document.getElementById('connection-status');
+        let socket;
+
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established.');
+                connectionStatus.textContent = 'Connected to server.';
+                connectionStatus.style.color = 'green';
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'detailedStats') {
+                        updateMessageTable(data.stats);
+                    } else if (data.type === 'filteredLogUpdate') {
+                        updateFilteredMessagesLog(data.log);
+                    }
+                } catch (error) {
+                    console.error('Error processing message from server:', error);
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.log('WebSocket connection closed.', event);
+                connectionStatus.textContent = 'Disconnected. Attempting to reconnect...';
+                connectionStatus.style.color = 'red';
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                connectionStatus.textContent = 'Connection error.';
+                connectionStatus.style.color = 'red';
+            };
+        }
+
+        function updateMessageTable(stats) {
+            messageTableBody.innerHTML = '';
+            const sortedIds = Object.keys(stats).sort((a, b) => parseInt(a, 16) - parseInt(b, 16));
+
+            if (sortedIds.length === 0) {
+                noMessagesPlaceholder.style.display = 'block';
+                return;
+            }
+            noMessagesPlaceholder.style.display = 'none';
+
+            sortedIds.forEach(id => {
+                const count = stats[id];
+                const row = messageTableBody.insertRow();
+                row.insertCell().textContent = id;
+                row.insertCell().textContent = count;
+            });
+        }
+
+        function updateFilteredMessagesLog(log) {
+            filteredMessagesTableBody.innerHTML = '';
+
+            if (!log || log.length === 0) {
+                noFilteredMessagesPlaceholder.style.display = 'block';
+                return;
+            }
+            noFilteredMessagesPlaceholder.style.display = 'none';
+
+            // Display messages as received (server sends them oldest in log to newest)
+            // If newest first is desired, reverse here: log.slice().reverse().forEach(...)
+            log.forEach(entry => {
+                const row = filteredMessagesTableBody.insertRow();
+                row.insertCell().textContent = entry.id;
+                row.insertCell().textContent = entry.txid;
+                row.insertCell().textContent = entry.data;
+            });
+        }
+
+        // Initial connection attempt & UI setup
+        connectWebSocket();
+        updateMessageTable({}); // Initialize general stats table
+        updateFilteredMessagesLog([]); // Initialize filtered log table
+    </script>
+</body>
+</html>

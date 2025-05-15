@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAN Bus Monitor - Unique IDs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #0056b3;
+        }
+        #count-display {
+            font-size: 2em;
+            font-weight: bold;
+            color: #d9534f;
+            margin-top: 10px;
+        }
+        .status {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CAN Bus Live Monitor</h1>
+        <p>Total Unique Message IDs Received:</p>
+        <div id="count-display">0</div>
+        <p class="status" id="connection-status">Connecting to server...</p>
+    </div>
+
+    <script>
+        const countDisplay = document.getElementById('count-display');
+        const connectionStatus = document.getElementById('connection-status');
+        let socket;
+
+        function connectWebSocket() {
+            // Use window.location.host to connect to the same host the page was served from
+            // Default WebSocket port is often the same as HTTP, or you can specify
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established.');
+                connectionStatus.textContent = 'Connected to server.';
+                connectionStatus.style.color = 'green';
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'uniqueIdCount') {
+                        countDisplay.textContent = data.count;
+                    }
+                } catch (error) {
+                    console.error('Error processing message from server:', error);
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.log('WebSocket connection closed.', event);
+                connectionStatus.textContent = 'Disconnected. Attempting to reconnect...';
+                connectionStatus.style.color = 'red';
+                // Optional: Implement a reconnect strategy
+                setTimeout(connectWebSocket, 3000); // Try to reconnect every 3 seconds
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                connectionStatus.textContent = 'Connection error.';
+                connectionStatus.style.color = 'red';
+                // socket.close() will usually be called after an error, triggering onclose
+            };
+        }
+
+        // Initial connection attempt
+        connectWebSocket();
+    </script>
+</body>
+</html>
