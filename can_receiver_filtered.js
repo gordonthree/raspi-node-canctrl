@@ -18,6 +18,14 @@ let filteredMessagesLog = [];   // For messages in the 0x700-0x77F range
 
 // --- Setup HTTP Server ---
 const server = http.createServer((req, res) => {
+    // const htmlFileName = 'index_filtered.html'; // Centralize filename
+    // const rootFilePath = path.join(__dirname, req.url);
+    // const includeFilePath = path.join(__dirname, 'include', req.url);
+
+    // const filePath = fs.existsSync(rootFilePath) ? rootFilePath : includeFilePath;
+    // const fullPath = path.join(__dirname, filePath);
+
+
     const htmlFileName = 'index_filtered.html'; // Centralize filename
     const filePath = (req.url === '/' || req.url === '/index.html' || req.url === `/${htmlFileName}`)
         ? htmlFileName
@@ -30,20 +38,31 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    if (filePath === htmlFileName) {
+    // if (filePath === htmlFileName) {
         fs.readFile(fullPath, (err, data) => {
             if (err) {
                 res.writeHead(500);
-                res.end(`Error loading ${htmlFileName}`);
+                res.end(`Error loading ${fullPath}`);
                 return;
             }
+            if (fullPath.includes('.html')) {
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(data);
+            } else if (fullPath.includes('.js')) {
+            res.writeHead(200, { 'Content-Type': 'text/javascript' });
+            res.end(data);
+            } else if (fullPath.includes('.css')) {
+            res.writeHead(200, { 'Content-Type': 'text/css' });
+            res.end(data);
+            } else {
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end(data);
+            }
         });
-    } else {
-        res.writeHead(404);
-        res.end('Not Found');
-    }
+    // } else {
+    //     res.writeHead(404);
+    //     res.end('Not Found');
+    // }
 });
 
 // --- Setup WebSocket Server ---
